@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_state.dart';
+import 'pricing_view.dart';
 
 void main() {
   runApp(
@@ -88,7 +89,7 @@ class _TranslationPageState extends State<TranslationPage> {
                               ),
                               const SizedBox(width: 8),
                               const Text(
-                                'AI Interpreters Vlad Sanya',
+                                'AI Interpreters ',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w800,
@@ -415,6 +416,14 @@ class _TranslationPageState extends State<TranslationPage> {
                     title: 'Help & FAQ',
                     icon: Icons.help_outline,
                     children: [
+                      _buildSidebarTile(
+                        'Pricing & Plans',
+                        Icons.payments_outlined,
+                        () {
+                          Navigator.pop(context);
+                          _showSettings(context, appState);
+                        },
+                      ),
                       _buildSidebarTile(
                         'Why is translation delayed?',
                         Icons.query_builder,
@@ -794,154 +803,192 @@ class _TranslationPageState extends State<TranslationPage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Consumer<AppState>(
-        builder: (context, state, _) => Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
+      builder: (context) => DefaultTabController(
+        length: 2,
+        child: Consumer<AppState>(
+          builder: (context, state, _) => Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1A1A2E),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
               ),
-              const Text(
-                'Voice Selection',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 0.5,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Select the personality of your interpreter',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.5),
-                  fontSize: 14,
+                TabBar(
+                  dividerColor: Colors.transparent,
+                  indicatorColor: Colors.blueAccent,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.3),
+                  tabs: const [
+                    Tab(text: 'Voices'),
+                    Tab(text: 'Pricing'),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.5,
-                ),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: AppState.supportedVoices.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final voice = AppState.supportedVoices[index];
-                    final isSelected = state.selectedVoice.name == voice.name;
-
-                    return GestureDetector(
-                      onTap: () => state.setVoice(voice),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.blueAccent.withOpacity(0.1)
-                              : Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected
-                                ? Colors.blueAccent.withOpacity(0.5)
-                                : Colors.transparent,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
+                const SizedBox(height: 24),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      // Voice Selection Tab
+                      SingleChildScrollView(
+                        child: Column(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Colors.blueAccent
-                                    : Colors.white.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                isSelected ? Icons.headset : Icons.headset_mic,
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.white54,
-                                size: 20,
+                            const Text(
+                              'Voice Selection',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    voice.name,
-                                    style: TextStyle(
+                            const SizedBox(height: 8),
+                            Text(
+                              'Select the personality of your interpreter',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: AppState.supportedVoices.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 12),
+                              itemBuilder: (context, index) {
+                                final voice = AppState.supportedVoices[index];
+                                final isSelected =
+                                    state.selectedVoice.name == voice.name;
+
+                                return GestureDetector(
+                                  onTap: () => state.setVoice(voice),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
                                       color: isSelected
-                                          ? Colors.white
-                                          : Colors.white.withOpacity(0.9),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                          ? Colors.blueAccent.withOpacity(0.1)
+                                          : Colors.white.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Colors.blueAccent.withOpacity(0.5)
+                                            : Colors.transparent,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? Colors.blueAccent
+                                                : Colors.white.withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            isSelected
+                                                ? Icons.headset
+                                                : Icons.headset_mic,
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.white54,
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                voice.name,
+                                                style: TextStyle(
+                                                  color: isSelected
+                                                      ? Colors.white
+                                                      : Colors.white
+                                                            .withOpacity(0.9),
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                voice.description,
+                                                style: TextStyle(
+                                                  color: Colors.white
+                                                      .withOpacity(0.4),
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (isSelected)
+                                          const Icon(
+                                            Icons.check_circle,
+                                            color: Colors.blueAccent,
+                                            size: 24,
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    voice.description,
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.4),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                );
+                              },
                             ),
-                            if (isSelected)
-                              const Icon(
-                                Icons.check_circle,
-                                color: Colors.blueAccent,
-                                size: 24,
-                              ),
                           ],
                         ),
                       ),
-                    );
-                  },
+                      // Pricing Tab
+                      const SingleChildScrollView(child: PricingView()),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.05),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.05),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
                     ),
-                    elevation: 0,
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Close',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Close',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),
