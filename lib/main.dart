@@ -278,7 +278,7 @@ class _TranslationPageState extends State<TranslationPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'User Account',
+                              'User Accousnt',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
