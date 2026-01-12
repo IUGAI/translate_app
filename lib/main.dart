@@ -611,11 +611,7 @@ class _TranslationPageState extends State<TranslationPage> {
                 Text(
                   appState.isMicMuted
                       ? "Microphone Muted"
-                      : (appState.isListening
-                            ? "I'm listening..."
-                            : (appState.isSpeaking
-                                  ? "Translating..."
-                                  : "Waiting...")),
+                      : appState.currentSpeech,
                   style: TextStyle(
                     color: appState.isMicMuted
                         ? Colors.redAccent.withOpacity(0.8)

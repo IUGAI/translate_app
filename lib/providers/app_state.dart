@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../services/translation_service.dart';
 import '../services/speech_service.dart';
@@ -228,39 +229,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _isSpeechInitialized = false;
-
-  Future<void> _ensureSpeechInitialized() async {
-    if (_isSpeechInitialized) return;
-    bool available = await _speechService.initSpeech(
-      onStatus: (status) {
-        if (status == 'notListening' || status == 'done') {
-          isListening = false;
-          notifyListeners();
-        } else if (status == 'listening') {
-          isListening = true;
-          notifyListeners();
-        }
-      },
-      onError: (error) {
-        isListening = false;
-        notifyListeners();
-        if (isLoopActive && isVoiceMode) {
-          Future.delayed(
-            const Duration(milliseconds: 500),
-            () => _startListeningLoop(),
-          );
-        }
-      },
-    );
-    _isSpeechInitialized = available;
-  }
-
   Future<void> toggleListening() async {
     if (isVoiceMode) {
+      if (isListening) {
+        await _stopAndProcessRecording();
+      }
       isVoiceMode = false;
       isLoopActive = false;
-      _speechService.stopListening();
       _speechService.stopSpeaking();
       isListening = false;
       isSpeaking = false;
@@ -273,53 +248,74 @@ class AppState extends ChangeNotifier {
   }
 
   double soundLevel = 0.0;
+  StreamSubscription? _recorderSubscription;
 
   Future<void> _startListeningLoop() async {
     if (!isLoopActive || isSpeaking || !isVoiceMode || isMicMuted) return;
 
-    await _ensureSpeechInitialized();
-    if (_isSpeechInitialized) {
-      currentSpeech = "";
-      _speechService.startListening(
-        localeId: fromLanguageCode,
-        onPartialResult: (result) {
-          currentSpeech = result;
-        },
-        onFinalResult: (result) async {
-          currentSpeech = result;
-          soundLevel = 0.0;
-          notifyListeners();
-          if (currentSpeech.isNotEmpty) {
-            await _processSpeech(currentSpeech);
-          } else if (isLoopActive && isVoiceMode) {
-            _startListeningLoop();
-          }
-        },
-        onSoundLevel: (level) {
-          double normalized = (level + 2) / 12;
-          if (normalized < 0) normalized = 0;
-          if (normalized > 1) normalized = 1;
+    await _speechService.startRecording();
+    isListening = true;
+    currentSpeech = "I'm listening...";
+    notifyListeners();
 
-          soundLevel = soundLevel * 0.4 + normalized * 0.6;
-          notifyListeners();
-        },
-      );
+    // Monitor sound level
+    _recorderSubscription = _speechService.getRecorderStream()?.listen((amp) {
+      double normalized = (amp.current + 40) / 40; // Approx normalization
+      if (normalized < 0) normalized = 0;
+      if (normalized > 1) normalized = 1;
+      soundLevel = soundLevel * 0.4 + normalized * 0.6;
+      notifyListeners();
+    });
+
+    // Auto-stop after 10 seconds if no manual stop
+    Future.delayed(const Duration(seconds: 10), () {
+      if (isListening && isVoiceMode && !isSpeaking) {
+        _stopAndProcessRecording();
+      }
+    });
+  }
+
+  Future<void> _stopAndProcessRecording() async {
+    if (!isListening) return;
+    isListening = false;
+    currentSpeech = "Processing...";
+    notifyListeners();
+
+    await _recorderSubscription?.cancel();
+    _recorderSubscription = null;
+    soundLevel = 0.0;
+
+    final path = await _speechService.stopRecording();
+    if (path != null) {
+      final text = await _speechService.transcribe(path);
+      if (text.isNotEmpty) {
+        await _processSpeech(text);
+      } else {
+        if (isLoopActive && isVoiceMode) {
+          _startListeningLoop();
+        }
+      }
     }
   }
 
   Future<void> _processSpeech(String text) async {
     isSpeaking = true;
+    currentSpeech = "Translating...";
     notifyListeners();
 
     final userMsg = ChatMessage(text: text, isUser: true);
     messages.insert(0, userMsg);
     notifyListeners();
 
+    // Capture current languages to identify A and B in the prompt
+    final String currentLangA = fromLanguage;
+    final String currentLangB = toLanguage;
+
     try {
       final result = await _translationService.translate(
         text,
-        fromLanguage,
-        toLanguage,
+        currentLangA,
+        currentLangB,
       );
 
       final translation = result["translation"]!;
@@ -330,6 +326,7 @@ class AppState extends ChangeNotifier {
         isUser: true,
         translation: translation,
       );
+      currentSpeech = "Speaking...";
       notifyListeners();
 
       String ttsLangCode = (targetIndicator == "A") ? fromTtsCode : toTtsCode;
@@ -339,7 +336,23 @@ class AppState extends ChangeNotifier {
         ttsLangCode,
         () {
           isSpeaking = false;
-          swapLanguages();
+
+          // Smart swap logic:
+          // If we translated TO Language B (targetIndicator == "B"),
+          // we should now be listening for Language B.
+          // Since Language B was 'currentLangB' during the call:
+          // If our current fromLanguage name is NOT currentLangB, we swap.
+
+          if (targetIndicator == "B") {
+            if (fromLanguage != currentLangB) {
+              swapLanguages();
+            }
+          } else if (targetIndicator == "A") {
+            if (fromLanguage != currentLangA) {
+              swapLanguages();
+            }
+          }
+
           if (isLoopActive && isVoiceMode) {
             _startListeningLoop();
           }

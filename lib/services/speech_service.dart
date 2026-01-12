@@ -7,11 +7,14 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:dart_openai/dart_openai.dart';
+import 'package:record/record.dart';
 
 class SpeechService {
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _tts = FlutterTts();
   final AudioPlayer _player = AudioPlayer();
+  final AudioRecorder _recorder = AudioRecorder();
 
   static const String _openaiApiKey = Env.openaiApiKey;
 
@@ -21,6 +24,49 @@ class SpeechService {
   }) async {
     return await _speech.initialize(onStatus: onStatus, onError: onError);
   }
+
+  // --- Whisper Recording / Transcription ---
+
+  String? _recordPath;
+
+  Future<void> startRecording() async {
+    if (await _recorder.hasPermission()) {
+      final dir = await getTemporaryDirectory();
+      _recordPath = "${dir.path}/speech_input.m4a";
+
+      const config = RecordConfig();
+      await _recorder.start(config, path: _recordPath!);
+      debugPrint("SpeechService: Recording started at $_recordPath");
+    }
+  }
+
+  Future<String?> stopRecording() async {
+    final path = await _recorder.stop();
+    debugPrint("SpeechService: Recording stopped, file saved at $path");
+    return path;
+  }
+
+  Stream<Amplitude>? getRecorderStream() {
+    return _recorder.onAmplitudeChanged(const Duration(milliseconds: 100));
+  }
+
+  Future<String> transcribe(String filePath) async {
+    debugPrint("SpeechService: Transcribing with Whisper...");
+    try {
+      final transcription = await OpenAI.instance.audio.createTranscription(
+        file: File(filePath),
+        model: "whisper-1",
+        responseFormat: OpenAIAudioResponseFormat.json,
+      );
+      debugPrint("SpeechService: Transcription result: ${transcription.text}");
+      return transcription.text;
+    } catch (e) {
+      debugPrint("SpeechService: Transcription error: $e");
+      return "";
+    }
+  }
+
+  // --- End Whisper Section ---
 
   void startListening({
     required String localeId,
