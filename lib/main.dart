@@ -88,7 +88,7 @@ class _TranslationPageState extends State<TranslationPage> {
                               ),
                               const SizedBox(width: 8),
                               const Text(
-                                'AI Interpreters',
+                                'AI Interpreters Vlad Sanya',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w800,
